@@ -1,17 +1,14 @@
 import time
 import ccxt
 import numpy as np
-from numpy.lib.function_base import blackman
 import pandas as pd
 import datetime
 import talib
-import pprint
 
 with open("바이낸스.txt") as f:
     lines = f.readlines()
     api_key = lines[0].strip() 
     secret = lines[1].strip() 
-
 
 def get_ohlcv(ticker, days):
     """ohlcv 조회"""
@@ -45,14 +42,12 @@ def get_condition_max_price(ticker, days, condition):
     """전 봉의 종가 조회"""
     df = get_ohlcv(ticker, days+1)
     price = df[condition].shift(1).max()
-    print(price)
     return price
 
 def get_condition_min_price(ticker, days, condition):
     """전 봉의 종가 조회"""
     df = get_ohlcv(ticker, days)
     price = df[condition].shift(1).min()
-    print(price)
     return price
 
 
@@ -138,22 +133,20 @@ def sell(ticker):
                 side = 'n'
     time.sleep(1)
     
-    if get_current_price(ticker) > low20 and side == 'BUY':
+    if get_current_price(ticker) < low20 and side == 'BUY':
         for elem in balance:
             if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
                 ticker = str(elem['symbol']).replace('USDT', '/USDT')
                 amount = str(elem['positionAmt']).replace('-', '')
                 exchange.create_market_sell_order(ticker, amount, {'closePosition':'true'})
-            print('Close: ' + ticker)
-            sell_list.append(ticker)
-    if get_current_price(ticker) < high20 and side == 'SELL':
+                print('Close: ' + ticker)
+    if get_current_price(ticker) > high20 and side == 'SELL':
         for elem in balance:
             if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
                 ticker = str(elem['symbol']).replace('USDT', '/USDT')
                 amount = str(elem['positionAmt']).replace('-', '')
                 exchange.create_market_buy_order(ticker, amount, {'closePosition':'true'})
-            print('Close: ' + ticker)
-            sell_list.append(ticker)
+                print('Close: ' + ticker)
 
 def update_boughtlist():
     balance = exchange.fetch_balance()['info']['positions']
@@ -175,7 +168,7 @@ exchange = ccxt.binance(config={
     }
 })
 
-buy_list = ['ETH/USDT', 'XRP/USDT', 'ADA/USDT']
+buy_list = ['ETH/USDT', 'XRP/USDT']
 bought_list = []
 sell_list = []
 usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
@@ -196,7 +189,7 @@ while True:
                 low20 = get_condition_min_price(ticker,20,'low')
                 if ticker not in bought_list:
                     buy(ticker)
-                if ticker in bought_list and ticker not in sell_list:
+                if ticker in bought_list:
                     sell(ticker)
         update_boughtlist()
         time.sleep(1)

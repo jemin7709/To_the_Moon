@@ -1,16 +1,13 @@
 import time
 import ccxt
-import numpy as np
+import numpy
 import pandas as pd
 import datetime
-import talib
-import pprint
 
 with open("바이낸스.txt") as f:
     lines = f.readlines()
     api_key = lines[0].strip() 
     secret = lines[1].strip() 
-
 
 def get_ohlcv(ticker, days):
     """ohlcv 조회"""
@@ -26,11 +23,12 @@ def get_ma(ticker, days):
     ma = df['close'].rolling(days, min_periods=1).mean().iloc[-1]
     return round(ma, 4)
 
-def get_ema(ticker, days, prices='close'):
-    df = get_ohlcv(ticker, days*5)
-    price = np.array(df[prices])
-    ema = talib.EMA(price, days)[-1]
-    return round(ema, 4)
+def get_ema(ticker, days, prices='close', smoothing=2):
+    df = get_ohlcv(ticker, days)
+    ema = [sum(df[prices][:days]) / days]
+    for price in prices[days:]:
+        ema.append((price * (smoothing / (1 + days))) + ema[-1] * (1 - (smoothing / (1 + days))))
+    return round(ema[0], 4)
 
 
 def get_open_price(ticker):
@@ -123,10 +121,9 @@ exchange = ccxt.binance(config={
     }
 })
 
-buy_list = ['BNB/USDT', 'ADA/USDT']
+buy_list = ['ETH/USDT', 'XRP/USDT']
 bought_list = []
 usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
-order_book = {}
 print('start')
 while True:
     try:

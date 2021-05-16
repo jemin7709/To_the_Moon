@@ -91,7 +91,7 @@ while True:
         end_time = start_time + datetime.timedelta(days=1) - datetime.timedelta(minutes=5)
         krw_check_time = start_time + datetime.timedelta(days=1) - datetime.timedelta(minutes=1)
 
-        tickers = pyupbit.get_tickers(fiat="KRW")
+        tickers = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP','KRW-ADA']
         mytickers = upbit.get_balances()
 
         if start_time < now < end_time:
