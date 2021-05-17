@@ -1,8 +1,9 @@
 import time
 import ccxt
-import numpy
+import numpy as np
 import pandas as pd
 import datetime
+import talib
 
 with open("바이낸스.txt") as f:
     lines = f.readlines()
@@ -24,11 +25,10 @@ def get_ma(ticker, days):
     return round(ma, 4)
 
 def get_ema(ticker, days, prices='close', smoothing=2):
-    df = get_ohlcv(ticker, days)
-    ema = [sum(df[prices][:days]) / days]
-    for price in prices[days:]:
-        ema.append((price * (smoothing / (1 + days))) + ema[-1] * (1 - (smoothing / (1 + days))))
-    return round(ema[0], 4)
+    df = get_ohlcv(ticker, days * 5)
+    price =  np.array(df[prices])
+    ema = talib.EMA(price, days)[-1]
+    return round(ema, 4)
 
 
 def get_open_price(ticker):
