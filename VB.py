@@ -1,7 +1,6 @@
 import time
 import pyupbit
 import datetime
-import traceback
 
 with open("key.txt") as key:
     lines = key.readlines()

@@ -124,7 +124,7 @@ def sell(ticker):
     amount = round((usdt / get_current_price(ticker))* 3, 3)
     balance = exchange.fetch_balance()['info']['positions']
     for elem in balance:
-        if ticker.replace('/USDT', 'USDT') in elem['symbol']:
+        if ticker.replace('/USDT', 'USDT') == elem['symbol']:
             if float(elem['positionAmt']) < 0:
                 side = 'SELL'
             elif float(elem['positionAmt']) > 0:
@@ -132,7 +132,6 @@ def sell(ticker):
             else:
                 side = 'n'
     time.sleep(1)
-    
     if get_current_price(ticker) < low20 and side == 'BUY':
         for elem in balance:
             if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
@@ -165,6 +164,7 @@ exchange = ccxt.binance(config={
     'enableRateLimit': True, # required https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
     'options': {
         'defaultType': 'future',
+        'adjustForTimeDifference': True
     }
 })
 
