@@ -121,7 +121,7 @@ exchange = ccxt.binance(config={
     }
 })
 
-buy_list = ['ETH/USDT', 'XRP/USDT']
+buy_list = ['ADA/USDT', 'BNB/USDT']
 bought_list = []
 usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
 print('start')
