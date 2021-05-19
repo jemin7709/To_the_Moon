@@ -18,38 +18,25 @@ def get_ohlcv(ticker, days):
     df.set_index('datetime', inplace=True)
     return df
 
-def get_ma(ticker, days):
-    """이동 평균선 조회"""
-    df = get_ohlcv(ticker, days)
-    ma = df['close'].rolling(days, min_periods=1).mean().iloc[-1]
-    return round(ma, 4)
+def get_ATR(ticker, days):
+    df = get_ohlcv(ticker, days * days)
+    close = np.array(df['close'])
+    high = np.array(df['high'])
+    low = np.array(df['low'])
+    ATR = talib. ATR(high, low, close, timeperiod=days)[-1]
+    return round(ATR, 4)
 
-def get_ema(ticker, days, prices='close', smoothing=2):
-    df = get_ohlcv(ticker, days)
-    ema = [sum(df[prices][:days]) / days]
-    for price in prices[days:]:
-        ema.append((price * (smoothing / (1 + days))) + ema[-1] * (1 - (smoothing / (1 + days))))
-    return round(ema[0], 4)
-
-
-def get_open_price(ticker):
-    """시가 조회"""
-    df = get_ohlcv(ticker, 1)
-    price = df['open'].iloc[-1]
-    return price
-
-def get_condition_max_price(ticker, days, condition):
+def get_condition_max_price(ticker, days, condition, delay = 0):
     """전 봉의 종가 조회"""
-    df = get_ohlcv(ticker, days+1)
-    price = df[condition].shift(1).max()
+    df = get_ohlcv(ticker, days+delay)
+    price = df[condition][:days-delay].max()
     return price
 
-def get_condition_min_price(ticker, days, condition):
+def get_condition_min_price(ticker, days, condition, delay = 0):
     """전 봉의 종가 조회"""
-    df = get_ohlcv(ticker, days)
-    price = df[condition].shift(1).min()
+    df = get_ohlcv(ticker, days+delay)
+    price = df[condition][:days-delay].min()
     return price
-
 
 def get_current_price(ticker):
     """현재가 조회"""
@@ -57,58 +44,35 @@ def get_current_price(ticker):
     price = orderbook['asks'][0][0]
     return price
 
-def update_boughtlist():
-    balance = exchange.fetch_balance()['info']['positions']
-    for elem in balance:
-        ticker = str(elem['symbol']).replace('USDT', '/USDT')
-        if elem['initialMargin'] == '0' and ticker in bought_list:
-            order = exchange.fetchOpenOrders(ticker)
-            time.sleep(2)
-            bought_list.remove(ticker)
-            for elem in order:
-                    exchange.cancel_order(elem['id'], ticker)
-
-
 def sell_all():
     balance = exchange.fetch_balance()['info']['positions']
-    time.sleep(2)
     for elem in balance:
         if elem['initialMargin'] != '0':
             ticker = str(elem['symbol']).replace('USDT', '/USDT')
             amount = elem['positionAmt']
             exchange.create_market_sell_order(ticker, amount)
 
-def get_ATR(ticker, days):
-    df = get_ohlcv(ticker, days*5)
-    close = np.array(df['close'])
-    high = np.array(df['high'])
-    low = np.array(df['low'])
-    ATR = talib. ATR(high, low, close, timeperiod=days)[-1]
-    return round(ATR, 4)
-
 def buy(ticker):
     """매수조건 확인 후 매수"""
     amount = round((usdt / get_current_price(ticker))* 3, 3)
-    time.sleep(1)
 
-    if get_current_price(ticker) > high55:
+    if exhigh55 < high55:
         exchange.create_market_buy_order(ticker, amount)
         re_condition = "SELL"
         bought_list.append(ticker)
-        time.sleep(2)
+        time.sleep(1)
         stop(re_condition, ticker)
         print('BUY: ' + ticker)
-    elif get_current_price(ticker) < low55:
+    elif exlow55 > low55:
         exchange.create_market_sell_order(ticker, amount)
         re_condition ="BUY"
         bought_list.append(ticker)
-        time.sleep(2)
+        time.sleep(1)
         stop(re_condition, ticker)
         print('SELL: ' + ticker)
 
 def stop(condition, ticker):
     balance = exchange.fetch_balance()['info']['positions']
-    time.sleep(2)
     for elem in balance:
         if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
             ticker = str(elem['symbol']).replace('USDT', '/USDT')
@@ -131,20 +95,19 @@ def sell(ticker):
                 side = 'BUY'
             else:
                 side = 'n'
-    time.sleep(1)
-    if get_current_price(ticker) < low20 and side == 'BUY':
+    if exlow20 > low20 and side == 'BUY':
         for elem in balance:
             if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
                 ticker = str(elem['symbol']).replace('USDT', '/USDT')
                 amount = str(elem['positionAmt']).replace('-', '')
-                exchange.create_market_sell_order(ticker, amount, {'closePosition':'true'})
+                exchange.create_market_sell_order(ticker, amount, {'reduceOnly':'true'})
                 print('Close: ' + ticker)
-    if get_current_price(ticker) > high20 and side == 'SELL':
+    if exhigh20 < high20 and side == 'SELL':
         for elem in balance:
             if elem['initialMargin'] != '0' and elem['symbol'] == ticker.replace('/USDT', 'USDT'):
                 ticker = str(elem['symbol']).replace('USDT', '/USDT')
                 amount = str(elem['positionAmt']).replace('-', '')
-                exchange.create_market_buy_order(ticker, amount, {'closePosition':'true'})
+                exchange.create_market_buy_order(ticker, amount, {'reduceOnly':'true'})
                 print('Close: ' + ticker)
 
 def update_boughtlist():
@@ -153,7 +116,6 @@ def update_boughtlist():
         ticker = str(elem['symbol']).replace('USDT', '/USDT')
         if elem['initialMargin'] == '0' and ticker in bought_list:
             order = exchange.fetchOpenOrders(ticker)
-            time.sleep(2)
             bought_list.remove(ticker)
             for elem in order:
                 exchange.cancel_order(elem['id'], ticker)
@@ -164,13 +126,18 @@ exchange = ccxt.binance(config={
     'enableRateLimit': True, # required https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
     'options': {
         'defaultType': 'future',
-        'adjustForTimeDifference': True
+        'adjustForTimeDifference': True,
+        'enableRateLimit': True
     }
 })
 
-buy_list = ['ETH/USDT', 'XRP/USDT']
+buy_list = ['ETH/USDT', 'XRP/USDT', 'ADA/USDT', 'BNB/USDT']
 bought_list = []
-sell_list = []
+balance = exchange.fetch_balance()['info']['positions']
+for elem in balance:
+    if elem['initialMargin'] != '0':
+        ticker = str(elem['symbol']).replace('USDT', '/USDT')
+        bought_list.append(ticker)
 usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
 print('start')
 while True:
@@ -187,10 +154,18 @@ while True:
                 high20 = get_condition_max_price(ticker,20,'high')
                 low55 = get_condition_min_price(ticker,55,'low')
                 low20 = get_condition_min_price(ticker,20,'low')
+                time.sleep(1)
+                exhigh55 = get_condition_max_price(ticker, 55,'high', 1)
+                exhigh20 = get_condition_max_price(ticker, 20,'high', 1)
+                exlow55 = get_condition_min_price(ticker, 55, 'low', 1)
+                exlow20 = get_condition_min_price(ticker, 20, 'low', 1)
                 if ticker not in bought_list:
+                    print(ticker + 'buy')
                     buy(ticker)
                 if ticker in bought_list:
+                    print(ticker + 'sell')
                     sell(ticker)
+                time.sleep(1)
         update_boughtlist()
         time.sleep(1)
     except Exception as e:

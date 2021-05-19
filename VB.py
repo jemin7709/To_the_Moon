@@ -82,6 +82,13 @@ def checkSell(ticker):
 upbit = pyupbit.Upbit(access, secret)
 print("autotrade start")
 krw = int(get_balance("KRW") / 10)
+bought_list = []
+balances = upbit.get_balances()
+for b in balances:
+    if b['currency'] != 'KRW':
+        if b['balance'] is not None:
+            bought_list.append('KRW-' + b['currency'])
+print(bought_list)
 # 자동매매 시작
 while True:
     try:
@@ -90,14 +97,15 @@ while True:
         end_time = start_time + datetime.timedelta(days=1) - datetime.timedelta(minutes=5)
         krw_check_time = start_time + datetime.timedelta(days=1) - datetime.timedelta(minutes=1)
 
-        tickers = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP','KRW-ADA']
+        tickers = ['KRW-BTC', 'KRW-ETH', 'KRW-XRP', 'KRW-ADA', 'KRW-DOGE']
         mytickers = upbit.get_balances()
 
         if start_time < now < end_time:
             if len(upbit.get_balances()) < 6:
                 for ticker in tickers:
-                    ticker = str(ticker).replace("KRW-", "")
-                    checkBuy(ticker)
+                    if ticker not in bought_list:
+                        ticker = str(ticker).replace("KRW-", "")
+                        checkBuy(ticker)
                     time.sleep(1)
 
         elif end_time < now < krw_check_time:
@@ -105,13 +113,12 @@ while True:
                 if ticker['currency'] != 'KRW':
                     ticker = ticker['currency']
                     checkSell(ticker)
+                    bought_list.remove('KRW-' + ticker)
                 time.sleep(1)
 
         else:
             krw = int(get_balance("KRW") / 10)
             print(krw)
-
-        time.sleep(2)
     except Exception as e:
         print(e)
         time.sleep(1)

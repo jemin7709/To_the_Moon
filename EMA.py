@@ -25,7 +25,7 @@ def get_ma(ticker, days):
     return round(ma, 4)
 
 def get_ema(ticker, days, prices='close', smoothing=2):
-    df = get_ohlcv(ticker, days * 5)
+    df = get_ohlcv(ticker, days * days)
     price =  np.array(df[prices])
     ema = talib.EMA(price, days)[-1]
     return round(ema, 4)
