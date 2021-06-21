@@ -2,7 +2,6 @@ import time
 import ccxt
 import numpy as np
 import pandas as pd
-import datetime
 import talib
 
 with open("바이낸스.txt") as f:
@@ -12,7 +11,7 @@ with open("바이낸스.txt") as f:
 
 def get_ohlcv(ticker, days):
     """ohlcv 조회"""
-    ohlcv = exchange.fetch_ohlcv(ticker, timeframe='5m', limit=days)
+    ohlcv = exchange.fetch_ohlcv(ticker, timeframe='15m', limit=days)
     df = pd.DataFrame(ohlcv, columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
     df['datetime'] = pd.to_datetime(df['datetime'], unit='ms')
     df.set_index('datetime', inplace=True)
@@ -54,24 +53,25 @@ def buy(ticker):
     ema25 = get_ema(ticker, 25)
     ema50 = get_ema(ticker, 50)
     ema100 = get_ema(ticker, 100)
-    amount = round(usdt / get_current_price(ticker) * 3, 3)
+    amount = round(usdt * 0.01 / ema50, 4)
+    print(amount)
     re_condition = ""
-    if ema25 > ema50 > ema100:
-        if (ema25 > get_condition_price(ticker, 2, 'close') > ema50 or get_condition_price(ticker, 2, 'close') < ema50) and get_condition_price(ticker, 1, 'close') > ema25:
-            exchange.create_market_buy_order(ticker, amount)
-            re_condition = "SELL"
-            bought_list.append(ticker)
-            time.sleep(2)
-            sell(re_condition, ticker)
-            print('BUY: ' + ticker)
-    elif ema25 < ema50 < ema100:
-        if (ema25 < get_condition_price(ticker, 2, 'close') < ema50 or get_condition_price(ticker, 2, 'close') > ema50) and get_condition_price(ticker, 1, 'close') < ema25:
-            exchange.create_market_sell_order(ticker, amount)
-            re_condition ="BUY"
-            bought_list.append(ticker)
-            time.sleep(2)
-            sell(re_condition, ticker)
-            print('SELL: ' + ticker)
+    # if ema25 > ema50 > ema100:
+    #     if (ema25 > get_condition_price(ticker, 2, 'close') > ema50 or get_condition_price(ticker, 2, 'close') < ema50) and get_condition_price(ticker, 1, 'close') > ema25:
+    #         exchange.create_market_buy_order(ticker, amount)
+    #         re_condition = "SELL"
+    #         bought_list.append(ticker)
+    #         time.sleep(2)
+    #         sell(re_condition, ticker)
+    #         print('BUY: ' + ticker)
+    # elif ema25 < ema50 < ema100:
+    #     if (ema25 < get_condition_price(ticker, 2, 'close') < ema50 or get_condition_price(ticker, 2, 'close') > ema50) and get_condition_price(ticker, 1, 'close') < ema25:
+    #         exchange.create_market_sell_order(ticker, amount)
+    #         re_condition ="BUY"
+    #         bought_list.append(ticker)
+    #         time.sleep(2)
+    #         sell(re_condition, ticker)
+    #         print('SELL: ' + ticker)
             
 
 def sell(condition, ticker):
@@ -121,24 +121,19 @@ exchange = ccxt.binance(config={
     }
 })
 
-buy_list = ['ADA/USDT', 'BNB/USDT']
+buy_list = ['ETH/USDT']
 bought_list = []
-usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
+usdt = exchange.fetch_balance()['USDT']['free']
 print('start')
 while True:
     try:
-        now = datetime.datetime.now()
-        start_time = now.replace(hour=23, minute=58, second=0)
-        end_time = now.replace(hour=23, minute=59, second=0)
-        if start_time < now < end_time:
-            sell_all()
-            usdt = exchange.fetch_balance()['USDT']['free'] * 0.25
+        if len(bought_list)==0:
+            usdt = exchange.fetch_balance()['USDT']['free']
         if bought_list != buy_list:
             for ticker in buy_list:
                 if ticker not in bought_list:
                     buy(ticker)
         update_boughtlist()
-        time.sleep(300)
     except Exception as e:
         print(e)
         pass
