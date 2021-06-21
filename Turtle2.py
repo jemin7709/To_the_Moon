@@ -64,7 +64,7 @@ def sell_all():
 
 def buy(ticker):
     """매수조건 확인 후 매수"""
-    usdt_1p = usdt * 0.01 / (2 * get_ATR(ticker, 14))
+    usdt_1p = usdt * 0.02 / (2 * get_ATR(ticker, 14))
     amount = round(usdt_1p, 4)
     df = get_ohlcv(ticker, 1)
     global fire, reset
@@ -195,7 +195,7 @@ while True:
             exhighS = get_condition_max_price(ticker, 10,'high', dfs)
             exlowL = get_condition_min_price(ticker, 20, 'low', dfl)
             exlowS = get_condition_min_price(ticker, 10, 'low', dfs)
-            if ((ticker not in bought_list) or fire.get(ticker) < 3) and reset.get(ticker) == 0:
+            if ((ticker not in bought_list) or fire.get(ticker) < 4) and reset.get(ticker) == 0:
                 print(ticker + 'buy')
                 buy(ticker)
             if ticker in bought_list:
